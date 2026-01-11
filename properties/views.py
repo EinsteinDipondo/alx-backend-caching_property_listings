@@ -12,6 +12,87 @@ from .models import Property
 from .forms import PropertyForm  # We'll create this next
 from django.core.cache import cache
 
+
+# Add these imports at the top
+from .utils import (
+    get_redis_cache_metrics, 
+    get_cache_effectiveness,
+    get_cache_keys_info,
+    reset_cache_metrics,
+    monitor_cache_performance
+)
+
+# Add these views to properties/views.py
+
+def cache_metrics_view(request):
+    """
+    View to display Redis cache metrics.
+    """
+    metrics = get_redis_cache_metrics()
+    effectiveness = get_cache_effectiveness()
+    keys_info = get_cache_keys_info()
+    
+    return render(request, 'properties/cache_metrics.html', {
+        'metrics': metrics,
+        'effectiveness': effectiveness,
+        'keys_info': keys_info,
+        'timestamp': time.time(),
+    })
+
+
+def cache_metrics_json(request):
+    """
+    JSON API endpoint for cache metrics.
+    """
+    metrics = get_redis_cache_metrics()
+    effectiveness = get_cache_effectiveness()
+    
+    return JsonResponse({
+        'metrics': metrics,
+        'effectiveness': effectiveness,
+        'timestamp': time.time(),
+    })
+
+
+def reset_metrics_view(request):
+    """
+    View to reset cache metrics (requires POST for safety).
+    """
+    if request.method == 'POST':
+        success = reset_cache_metrics()
+        message = 'Cache metrics reset successfully' if success else 'Failed to reset cache metrics'
+        
+        if request.headers.get('Accept') == 'application/json':
+            return JsonResponse({
+                'success': success,
+                'message': message,
+            })
+        
+        return render(request, 'properties/reset_metrics_result.html', {
+            'success': success,
+            'message': message,
+        })
+    
+    # GET request shows confirmation page
+    return render(request, 'properties/reset_metrics_confirm.html')
+
+
+def monitor_performance_view(request):
+    """
+    View to monitor cache performance with simulated requests.
+    """
+    sample_size = int(request.GET.get('sample_size', 100))
+    
+    if sample_size > 1000:  # Safety limit
+        sample_size = 1000
+    
+    results = monitor_cache_performance(sample_size)
+    
+    return JsonResponse({
+        'monitoring_results': results,
+        'sample_size': sample_size,
+        'timestamp': time.time(),
+    })
 # Add these views at the bottom of views.py
 def create_property_test(request):
     """

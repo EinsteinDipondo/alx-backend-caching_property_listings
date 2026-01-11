@@ -14,4 +14,10 @@ urlpatterns = [
     # Signal testing endpoints
     path('create-test/', views.create_property_test, name='create_property_test'),
     path('delete-test/<int:property_id>/', views.delete_property_test, name='delete_property_test'),
+    
+    # Cache metrics endpoints (NEW)
+    path('cache-metrics/', views.cache_metrics_view, name='cache_metrics'),
+    path('cache-metrics/json/', views.cache_metrics_json, name='cache_metrics_json'),
+    path('reset-metrics/', views.reset_metrics_view, name='reset_metrics'),
+    path('monitor-performance/', views.monitor_performance_view, name='monitor_performance'),
 ]
