@@ -5,6 +5,82 @@ from .models import Property
 from .utils import get_all_properties, clear_properties_cache, get_property_count
 import json
 import time
+# Add these imports at the top if not already there
+from django.shortcuts import render, redirect
+from django.http import HttpResponse
+from .models import Property
+from .forms import PropertyForm  # We'll create this next
+from django.core.cache import cache
+
+# Add these views at the bottom of views.py
+def create_property_test(request):
+    """
+    Test view to create a property and see cache invalidation in action.
+    """
+    if request.method == 'POST':
+        title = request.POST.get('title', 'Test Property')
+        description = request.POST.get('description', 'Test Description')
+        price = request.POST.get('price', '100000.00')
+        location = request.POST.get('location', 'Test Location')
+        
+        # Create property (this should trigger the signal)
+        property = Property.objects.create(
+            title=title,
+            description=description,
+            price=price,
+            location=location
+        )
+        
+        return render(request, 'properties/create_success.html', {
+            'property': property,
+            'cache_cleared': cache.get('all_properties') is None
+        })
+    
+    return render(request, 'properties/create_form.html')
+
+
+def delete_property_test(request, property_id):
+    """
+    Test view to delete a property and see cache invalidation.
+    """
+    try:
+        property = Property.objects.get(id=property_id)
+        cache_before = cache.get('all_properties') is not None
+        
+        # Delete property (this should trigger the signal)
+        property.delete()
+        
+        cache_after = cache.get('all_properties') is not None
+        
+        return render(request, 'properties/delete_success.html', {
+            'property_title': property.title,
+            'cache_cleared': cache_before and not cache_after
+        })
+    except Property.DoesNotExist:
+        return HttpResponse("Property not found", status=404)
+
+
+def test_cache_status(request):
+    """
+    View to check current cache status and manually trigger cache clearing.
+    """
+    from .signals import clear_all_property_related_cache
+    
+    cache_status = {
+        'all_properties_cached': cache.get('all_properties') is not None,
+        'property_count_cached': cache.get('property_count') is not None,
+        'cache_backend': str(cache),
+    }
+    
+    if request.method == 'POST' and 'clear_cache' in request.POST:
+        cleared = clear_all_property_related_cache()
+        cache_status['last_cleared'] = cleared
+        cache_status['message'] = f'Cleared {cleared} cache entries'
+    
+    return render(request, 'properties/cache_status.html', {
+        'cache_status': cache_status,
+        'properties_count': Property.objects.count()
+    })
 
 # Cache the entire page response for 15 minutes
 @cache_page(60 * 15)
